@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat</title>
+    <link rel="stylesheet" href="{% static 'chat/css/styles.css' %}">
+</head>
+<body>
+<div class="layout">
+    <div class="sidebar">
+        <h3>💬 Chats</h3>
+        <ul>
+            {% for cid in chat_ids %}
+                <li><a href="?chat_id={{ cid }}">{{ cid|slice:":8" }}</a></li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="?new_chat=true">
+            {% csrf_token %}
+            <button type="submit">➕ New Chat</button>
+        </form>
+    </div>
+    <div class="main">
+        <h1>Chat with API</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Send</button>
+        </form>
+
+        {% if response %}
+        <div class="response">
+            <pre>{{ response }}</pre>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>

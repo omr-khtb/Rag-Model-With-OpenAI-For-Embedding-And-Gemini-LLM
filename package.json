@@ -1,0 +1,33 @@
+{
+  "name": "rag",
+  "version": "1.0.0",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "env-cmd -f .env nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "@langchain/community": "^0.3.37",
+    "@langchain/openai": "^0.4.9",
+    "@langchain/textsplitters": "^0.1.0",
+    "@supabase/supabase-js": "^2.49.3",
+    "axios": "^1.8.4",
+    "cloudinary": "^2.6.0",
+    "dotenv": "^16.4.7",
+    "env-cmd": "^10.1.0",
+    "express": "^4.21.2",
+    "groq-sdk": "^0.17.0",
+    "langchain": "^0.3.19",
+    "nodemon": "^3.1.9",
+    "officeparser": "^4.2.0",
+    "openai": "^4.89.0",
+    "pdf-parse": "^1.1.1",
+    "uuid": "^11.1.0"
+  },
+  "description": ""
+}

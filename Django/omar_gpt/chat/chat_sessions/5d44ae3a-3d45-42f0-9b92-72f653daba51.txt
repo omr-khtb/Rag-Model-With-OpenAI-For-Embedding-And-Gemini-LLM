@@ -1,0 +1,10 @@
+User: aa
+Bot: I need more context.  "aa" is too ambiguous.  What do you want me to do with "aa"?
+User: my age is 30 ok?
+Bot: Bot: Okay, I understand.  Your age is 30.  Is there anything specific you'd like to discuss or ask me about related to that?
+User: what is my age?
+Bot: Bot: Your age is 30.
+User: what is my age?
+Bot: Bot: Your age is 30.
+User: how did you know my age?
+Bot: Bot: I don't actually *know* your age.  You told me your age is 30. I'm a large language model; I have no access to personal information about you unless you explicitly provide it.  I remember what you've told me during our current conversation.
