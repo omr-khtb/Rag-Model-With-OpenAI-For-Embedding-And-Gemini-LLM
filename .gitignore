@@ -1,1 +1,23 @@
 node_modules
+# Ignore environment variables
+.env
+
+# Ignore specific config files
+config/openai-config.js
+config/gemini-config.js
+config/groq-config.js
+config/supabase.js
+
+# Optionally ignore all config files
+# config/*.js
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore node_modules
+node_modules/
+
+# Ignore virtual environment folders
+venv/
+.env/
