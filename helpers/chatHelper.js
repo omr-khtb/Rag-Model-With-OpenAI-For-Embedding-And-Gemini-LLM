@@ -66,21 +66,69 @@ export async function analyzeAudioWithGroq(audioUrl, message) {
   }
 }
 
+import FormData from 'form-data';
+import fs from 'fs';
+import path from 'path';
+
 async function fetchDocumentContent(url, chatId) {
   try {
     const response = await axios.get(url, { responseType: "arraybuffer" });
     const fileBlob = new Blob([response.data]);
 
     let loader;
+
     if (url.endsWith(".pdf")) {
-      loader = new WebPDFLoader(fileBlob);
-    } else if (url.endsWith(".docx")) {
+      // ✨ New: use EasyOCR Python API instead of WebPDFLoader
+      console.log("Using EasyOCR API to extract text from PDF:", url);
+
+      // Save PDF temporarily
+      const tempFilePath = path.join("./", `temp_${Date.now()}.pdf`);
+      fs.writeFileSync(tempFilePath, Buffer.from(await fileBlob.arrayBuffer()));
+
+      // Send to Python API
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(tempFilePath));
+
+      const ocrResponse = await axios.post(
+        "http://localhost:5000/extract-text/", // Your Python API URL
+        formData,
+        { headers: formData.getHeaders() }
+      );
+
+      // Clean up the temp file
+      fs.unlinkSync(tempFilePath);
+
+      const extractedText = ocrResponse.data.extracted_text;
+
+      if (!extractedText || extractedText.trim() === "") {
+        throw new Error("No text extracted from PDF using OCR.");
+      }
+
+      const metadata = { url, chatId };
+
+      return [
+        {
+          pageContent: extractedText.replace(/\s+/g, " ").trim(),
+          metadata,
+        },
+      ];
+    } 
+    else if (url.endsWith(".docx")) {
       loader = new DocxLoader(fileBlob);
-    } else if (url.endsWith(".pptx")) {
+    } 
+    else if (url.endsWith(".pptx")) {
       loader = new PPTXLoader(fileBlob);
-    } else {
+    } 
+    else {
       throw new Error("Unsupported file type.");
     }
+
+    // 🛑 Commenting this part out for PDFs:
+    /*
+    if (url.endsWith(".pdf")) {
+      loader = new WebPDFLoader(fileBlob);
+    }
+    */
 
     const documents = await loader.load();
 
@@ -110,6 +158,7 @@ async function fetchDocumentContent(url, chatId) {
     throw error;
   }
 }
+
 
 // Cosine similarity calculation
 function calculateCosineSimilarity(embedding1, embedding2) {
@@ -548,18 +597,28 @@ async function analyzeAndProcessFiles(files, message, chatId) {
 
   return fileContent;
 }
-// Post Chat Helpers
+
 export const processUserMessage = async (message, files, chatId) => {
   let fileContent = "";
+
+  
+  console.log("wer are here");
   if (files && files.length > 0) {
     if (files.length > 3) {
       throw new Error("Maximum 3 files allowed");
     }
-    fileContent = await analyzeAndProcessFiles(files, message, chatId);
+    const newFileContent = await analyzeAndProcessFiles(files, message, chatId);
+    fileContent += `\n${newFileContent}`;
   }
+  else{
+    console.log("No files provided, fetching existing documents...");
+    fileContent = await fetchExistingDocuments(chatId, message);
+  }
+
   console.log("File content:", fileContent);
   return fileContent;
 };
+
 
 export const prepareGroqMessages = (chat, message, fileContent) => {
   const combinedContent = `${message}\n${fileContent}\n`;
@@ -647,3 +706,48 @@ export const updateExistingChat = (
   chat.updatedAt = new Date();
   return chat;
 };
+
+
+export async function fetchExistingDocuments(chatId, message) {
+  try {
+    const hasDocuments = await hasDocumentsForChatId(chatId);
+
+    if (!hasDocuments) {
+      console.log(`No documents found for chatId: ${chatId}`);
+      return "";
+    }
+
+    console.log(`Documents exist, now fetching relevant documents for chatId: ${chatId}`);
+    
+    const relevantDocs = await getRelevantDocuments(message, chatId);
+
+    if (!relevantDocs || relevantDocs.length === 0) {
+      return "";
+    }
+
+    return relevantDocs
+      .map((doc) => `[Relevant Document]:\n${doc.content}`)
+      .join("\n\n");
+  } catch (error) {
+    console.error("Error fetching documents:", error.message);
+    return "";
+  }
+}
+
+
+export async function hasDocumentsForChatId(chatId) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("documents")
+      .select("id") // ✅ Only fetch IDs (not full document contents)
+      .eq("metadata->>chatId", chatId)
+      .limit(1); // ✅ We just want to know if any exist
+
+    if (error) throw error;
+
+    return (data && data.length > 0);
+  } catch (error) {
+    console.error("Error checking documents:", error.message);
+    return false;
+  }
+}

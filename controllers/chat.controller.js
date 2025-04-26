@@ -18,9 +18,8 @@ export const openSourceRAGModelChat = async (req, res) => {
     console.log("System Prompt:", message);
 
     let fileContent = "";
-    if (files && files.length > 0) {
-      fileContent = await processUserMessage(message, files, chatID);
-    }
+    fileContent = await processUserMessage(message, files, chatID);
+
 
     const groqMessages = [{ role: "user", content: message || "" }];
     if (fileContent) {
