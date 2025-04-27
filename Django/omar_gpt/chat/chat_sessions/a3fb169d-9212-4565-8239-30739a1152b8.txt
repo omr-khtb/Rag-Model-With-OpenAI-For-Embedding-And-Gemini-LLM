@@ -4,3 +4,5 @@ User: tell me who is the author of that document?
 Bot: I need more information to answer your question.  Please provide me with the document or at least its title or a description.
 User: tell me who is the author of that document?
 Bot: The author of the document, a novel titled "Ø±ÙØ§ÙØ© ÙÙØ§ÙÙÙ Ø¬ÙÙÙØ©", is ÙØ­ÙØ¯ ØµØ¨Ø­Ù (Mohammed Sobhi).
+User: tell me who is the author of that document?
+Bot: Bot: I need more information to answer your question. Please provide me with the document or at least its title or a description.
