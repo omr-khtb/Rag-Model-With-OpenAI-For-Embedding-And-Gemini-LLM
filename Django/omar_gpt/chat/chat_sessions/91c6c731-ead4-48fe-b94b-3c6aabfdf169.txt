@@ -1,0 +1,8 @@
+User: i want you to summrize the next
+GPT: Please provide the text you want me to summarize.
+User: summrize this
+GPT: Please provide the text you want me to summarize.
+User: summrize this
+GPT: Please provide the text you want me to summarize.
+User: summrize this
+GPT: 🚫 Request failed: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))

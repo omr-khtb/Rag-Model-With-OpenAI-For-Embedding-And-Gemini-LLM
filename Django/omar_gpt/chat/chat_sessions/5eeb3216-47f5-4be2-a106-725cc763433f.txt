@@ -1,4 +1,0 @@
-User: hi
-Bot: Hi there! How can I help you today?
-User: hi
-Bot: Bot: Hi again!  Anything I can assist you with?

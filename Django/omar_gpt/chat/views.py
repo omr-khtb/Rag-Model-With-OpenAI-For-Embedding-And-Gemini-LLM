@@ -1,27 +1,45 @@
 import os
-import uuid
 import requests
 import json
+import uuid
+import re
 
 from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from .forms import ChatForm
 from dotenv import load_dotenv
+
+# Arabic reshaper
+import arabic_reshaper
+from bidi.algorithm import get_display
 
 load_dotenv()
 
 API_URL = "http://localhost:3000/api/chat"
 headers = {"Content-Type": "application/json"}
 
-# Directory to store chat logs
 CHAT_LOG_DIR = os.path.join(os.path.dirname(__file__), 'chat_sessions')
-if not os.path.exists(CHAT_LOG_DIR):
-    os.makedirs(CHAT_LOG_DIR)
+TITLES_FILE = os.path.join(CHAT_LOG_DIR, 'chat_titles.json')
 
-# --- Utility Functions ---
+# Ensure folders exist
+os.makedirs(CHAT_LOG_DIR, exist_ok=True)
 
-def generate_chat_id():
-    return str(uuid.uuid4())
+# Arabic helper
+def contains_arabic(text):
+    return bool(re.search(r'[\u0600-\u06FF]', text))
 
+def fix_arabic(text):
+    try:
+        if contains_arabic(text):
+            reshaped = arabic_reshaper.reshape(text)
+            bidi_text = get_display(reshaped)
+            return bidi_text
+        else:
+            return text
+    except Exception:
+        return text
+
+# Utilities
 def get_chat_log_path(chat_id):
     return os.path.join(CHAT_LOG_DIR, f"{chat_id}.txt")
 
@@ -29,7 +47,7 @@ def save_to_chat_log(chat_id, prompt, response):
     file_path = get_chat_log_path(chat_id)
     with open(file_path, "a", encoding="utf-8") as f:
         f.write(f"User: {prompt}\n")
-        f.write(f"Bot: {response}\n")
+        f.write(f"GPT: {response}\n")
 
 def get_full_chat_history(chat_id):
     file_path = get_chat_log_path(chat_id)
@@ -43,9 +61,25 @@ def list_chat_ids():
         return []
     return [f.replace(".txt", "") for f in os.listdir(CHAT_LOG_DIR) if f.endswith(".txt")]
 
-# --- API call with full context ---
+def load_titles():
+    if os.path.exists(TITLES_FILE):
+        with open(TITLES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
-def send_message(message, file_url=None):
+def save_titles(titles):
+    with open(TITLES_FILE, "w", encoding="utf-8") as f:
+        json.dump(titles, f, ensure_ascii=False, indent=2)
+
+def set_chat_title(chat_id, response_text):
+    titles = load_titles()
+    if chat_id not in titles:
+        first_words = " ".join(response_text.strip().split()[:3])
+        titles[chat_id] = first_words or "Untitled"
+        save_titles(titles)
+
+# API call
+def send_message(message, file_url=None, current_chat_id=None):
     data = {
         "message": message,
         "systemprompt": "Default system prompt here"
@@ -54,16 +88,27 @@ def send_message(message, file_url=None):
     if file_url:
         data["files"] = [file_url]
 
-    print("\n🟢 SENDING TO API:")
-    print("==== BEGIN PROMPT ====")
+    if current_chat_id:
+        data["chatID"] = current_chat_id
+
+    print("\n🔵 Sending Prompt to API:")
     print(message)
-    print("==== END PROMPT ====\n")
+    print("🔵 End Prompt\n")
+
     try:
         response = requests.post(API_URL, json=data, headers=headers)
+
+        # 🛠️ Force correct decoding to UTF-8
+        response.encoding = 'utf-8'
+
+        print("\n🔴 Full RAW API Response:")
+        print(response.text)
+        print("🔴 End of API Response\n")
+
         if response.status_code == 200:
             response_lines = response.text.strip().split("\n\n")
             combined_content = ""
-            chat_id_found = None
+            api_chat_id = current_chat_id
 
             for line in response_lines:
                 if line.startswith("data: "):
@@ -73,44 +118,97 @@ def send_message(message, file_url=None):
                         if key == "content":
                             combined_content += value
                         elif key == "chatID":
-                            chat_id_found = value
-            return combined_content.strip() if combined_content else "No content in response."
+                            api_chat_id = value
+
+            return combined_content.strip(), api_chat_id
         else:
-            return f"❌ Error {response.status_code}: {response.text}"
+            return f"❌ Error {response.status_code}: {response.text}", current_chat_id
     except requests.exceptions.RequestException as e:
-        return f"🚫 Request failed: {e}"
+        return f"🚫 Request failed: {e}", current_chat_id
 
-# --- Main View ---
-
+# Main Chat View
 def chat_view(request):
     chat_id = request.GET.get("chat_id")
+    current_chat_id = chat_id
 
-    # Handle "New Chat" action
+    delete_id = request.GET.get("delete_chat")
+    rename_id = request.GET.get("rename_chat")
+    download_id = request.GET.get("download_chat")
+
+    # Download Chat
+    if download_id:
+        file_path = get_chat_log_path(download_id)
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                response = HttpResponse(f.read(), content_type='text/plain; charset=utf-8')
+                response['Content-Disposition'] = 'attachment; filename="chat_{}.txt"'.format(download_id[:8])
+                return response
+        else:
+            return redirect(f"/?chat_id={download_id}")
+
+    # Delete Chat
+    if delete_id:
+        file_path = get_chat_log_path(delete_id)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        titles = load_titles()
+        if delete_id in titles:
+            del titles[delete_id]
+            save_titles(titles)
+        return redirect("/")
+
+    # Rename Chat
+    if rename_id and request.method == "POST":
+        new_title = request.POST.get("new_title", "").strip()
+        if new_title:
+            titles = load_titles()
+            titles[rename_id] = new_title
+            save_titles(titles)
+        return redirect(f"/?chat_id={rename_id}")
+
+    # New Chat
     if request.method == "POST" and "new_chat" in request.GET:
-        new_id = generate_chat_id()
-        return redirect(f"/?chat_id={new_id}")
+        return redirect("/")
 
-    # No chat_id provided? Start a new one
-    if not chat_id:
-        return redirect(f"/?chat_id={generate_chat_id()}")
-
-    response = None
-
+    # Sending Message
     if request.method == "POST" and "new_chat" not in request.GET:
         form = ChatForm(request.POST)
         if form.is_valid():
             prompt = form.cleaned_data["message"]
             file_url = form.cleaned_data.get("file_url")
-            history = get_full_chat_history(chat_id)
+
+            history = ""
+            if current_chat_id:
+                history = get_full_chat_history(current_chat_id)
+
             full_prompt = f"{history}\nUser: {prompt}".strip()
-            response = send_message(full_prompt, file_url)
-            save_to_chat_log(chat_id, prompt, response)
+
+            response, new_chat_id = send_message(full_prompt, file_url, current_chat_id)
+
+            if not current_chat_id and new_chat_id:
+                current_chat_id = new_chat_id
+                return redirect(f"/?chat_id={current_chat_id}")
+
+            save_to_chat_log(current_chat_id, prompt, response)
+            set_chat_title(current_chat_id, response)
     else:
         form = ChatForm()
 
+    # Load chat history
+    chat_messages = []
+    if current_chat_id:
+        raw_history = get_full_chat_history(current_chat_id)
+        chat_lines = raw_history.strip().split("\n")
+        # Reshape only for displaying
+        chat_messages = list(reversed(chat_lines))  # newest first
+
+    all_chat_ids = list_chat_ids()
+    all_chat_ids.sort(reverse=True)
+
     return render(request, "chat/chat.html", {
         "form": form,
-        "response": response,
-        "chat_ids": list_chat_ids(),
-        "current_chat": chat_id
+        "chat_ids": all_chat_ids,
+        "chat_titles": load_titles(),
+        "current_chat": current_chat_id,
+        "chat_messages": chat_messages,
     })

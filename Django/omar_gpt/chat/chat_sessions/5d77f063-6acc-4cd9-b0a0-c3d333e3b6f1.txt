@@ -1,0 +1,4 @@
+User: what was said here
+GPT: The audio says:  "The news... my name is Omar and I love to eat pizza."  (The first word is a bit unclear, but sounds like a reference to news or announcements.)
+User: which language was used
+GPT: English.
