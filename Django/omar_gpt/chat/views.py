@@ -89,11 +89,17 @@ def set_chat_title(chat_id, response_text):
 # Build readable prompt text
 def build_prompt(history, latest_user_message):
     lines = []
-    for msg in history:
-        role = msg['role'].capitalize()  # 'User' or 'Gpt'
-        lines.append(f"{role}: {msg['content']}")
+    if history:
+        lines.append("This is the conversation so far:")
+        for msg in history:
+            role = msg['role'].capitalize()
+            lines.append(f"{role}: {msg['content']}")
+        lines.append("")  # empty line to separate
+
+    lines.append("Now, the user asks:")
     lines.append(f"User: {latest_user_message}")
     return "\n".join(lines)
+
 
 # Sending message
 def send_message(message, file_url=None, current_chat_id=None):

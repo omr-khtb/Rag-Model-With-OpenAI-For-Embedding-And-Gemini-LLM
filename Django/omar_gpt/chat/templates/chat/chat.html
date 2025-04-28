@@ -342,7 +342,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     
 
-
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.location.pathname === '/' && !window.location.search.includes('chat_id=')) {
+            console.log('➡️ No chat ID found. Creating new chat...');
+    
+            fetch('?new_chat=true', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            }).then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    console.error('New chat creation failed.');
+                }
+            }).catch(error => {
+                console.error('Request failed:', error);
+            });
+        }
+    });
+    </script>
+    
 
     
 </body>
