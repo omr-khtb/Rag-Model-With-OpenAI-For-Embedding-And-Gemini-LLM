@@ -183,7 +183,14 @@ def chat_view(request):
 
     # New Chat
     if request.method == "POST" and "new_chat" in request.GET:
-        return redirect("/")
+         # Send a "Test" message to create new chat_id
+         response, new_chat_id = send_message("Test")
+
+         if new_chat_id:
+             return redirect(f"/?chat_id={new_chat_id}")
+         else:
+             return redirect("/")  # fallback
+
 
     # Sending Message
     if request.method == "POST" and "new_chat" not in request.GET:
@@ -225,3 +232,5 @@ def chat_view(request):
         "current_chat": current_chat_id,
         "chat_messages": chat_messages,
     })
+
+

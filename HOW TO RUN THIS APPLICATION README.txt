@@ -4,7 +4,7 @@ uvicorn easyocrapi:app --reload --port 5000
 
 
 RUN THE SERVER
-nom run
+npm start
 
 
 RUN DJANGO
