@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "what is this"
+  },
+  {
+    "role": "gpt",
+    "content": "That's a picture of a white sneaker with a blue interior.  The photo is likely a product shot, highlighting the shoe's design against a light blue background."
+  }
+]

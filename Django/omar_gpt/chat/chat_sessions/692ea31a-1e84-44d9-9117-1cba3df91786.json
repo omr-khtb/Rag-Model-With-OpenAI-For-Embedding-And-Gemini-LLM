@@ -1,0 +1,18 @@
+[
+  {
+    "role": "user",
+    "content": "HELLO"
+  },
+  {
+    "role": "gpt",
+    "content": "Hello!"
+  },
+  {
+    "role": "user",
+    "content": "hi"
+  },
+  {
+    "role": "gpt",
+    "content": "GPT: Hi there!"
+  }
+]

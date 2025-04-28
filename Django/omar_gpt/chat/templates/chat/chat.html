@@ -244,100 +244,111 @@ function showRenameForm(chatId) {
 </script>
 
 <!-- Chat Handling Script -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('chat-form');
-    const messageInput = document.querySelector('input[name="message"]');
-    const fileInput = document.querySelector('input[name="file_url"]');
 
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();  // prevent normal form submit
-
-        const messageText = messageInput.value.trim();
-        const fileUrlText = fileInput.value.trim();
-        if (!messageText && !fileUrlText) return;
-
-        // ✅ Check if response-box exists before proceeding
-        let chatHistory = document.getElementById('response-box');
-
-        // If no response-box yet (because chat is empty), create it dynamically
-        if (!chatHistory) {
-            const chatHistoryContainer = document.getElementById('chat-history');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('chat-form');
+            const messageInput = document.querySelector('input[name="message"]');
+            const fileInput = document.querySelector('input[name="file_url"]');
         
-            const newResponseBox = document.createElement('div');
-            newResponseBox.className = 'response-box';
-            newResponseBox.id = 'response-box';
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();  // prevent normal form submit
         
-            chatHistoryContainer.appendChild(newResponseBox);
-            chatHistory = newResponseBox;
-        }
+                const messageText = messageInput.value.trim();
+                const fileUrlText = fileInput.value.trim();
+                if (!messageText && !fileUrlText) return;
         
-
-        // Add user message
-        const userBubble = document.createElement('div');
-        userBubble.className = 'chat-bubble user';
-        userBubble.innerHTML = `
-            <div class="bubble-content">
-                <strong>You:</strong> ${messageText}
-            </div>
-        `;
-        chatHistory.prepend(userBubble);
-
-        // Add GPT loading
-        const loadingBubble = document.createElement('div');
-        loadingBubble.className = 'chat-bubble gpt';
-        loadingBubble.id = 'loading-bubble';
-        loadingBubble.innerHTML = `
-            <div class="bubble-content">
-                <strong>GPT:</strong> <span class="loading-dots">...</span>
-            </div>
-        `;
-        chatHistory.prepend(loadingBubble);
-
-        // Clear input
-        messageInput.value = "";
-        fileInput.value = "";
-
-        try {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const formData = new FormData();
-            formData.append('message', messageText);
-            formData.append('file_url', fileUrlText);
-            formData.append('csrfmiddlewaretoken', csrfToken);
-
-            const response = await fetch(window.location.href, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.ok) {
-                const htmlPage = await response.text();
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = htmlPage;
-
-                const newChatBubbles = tempDiv.querySelectorAll('#response-box .chat-bubble.gpt');
-                if (newChatBubbles.length > 0) {
-                    const newMessage = newChatBubbles[0].innerHTML;
-                    const gptBubble = document.createElement('div');
-                    gptBubble.className = 'chat-bubble gpt';
-                    gptBubble.innerHTML = newMessage;
-
-                    document.getElementById('loading-bubble')?.remove();
-                    chatHistory.prepend(gptBubble);
-                } else {
+                let chatHistory = document.getElementById('response-box');
+        
+                // If no response-box yet (because chat is empty), create it dynamically
+                if (!chatHistory) {
+                    const chatHistoryContainer = document.getElementById('chat-history');
+        
+                    const newResponseBox = document.createElement('div');
+                    newResponseBox.className = 'response-box';
+                    newResponseBox.id = 'response-box';
+        
+                    chatHistoryContainer.appendChild(newResponseBox);
+                    chatHistory = newResponseBox;
+                }
+        
+                // Prepare file preview HTML if file exists
+                let filePreviewHTML = '';
+                if (fileUrlText) {
+                    if (fileUrlText.match(/\.(jpeg|jpg|png|gif|bmp|webp)$/i)) {
+                        filePreviewHTML = `<br><img src="${fileUrlText}" alt="Attached Image" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">`;
+                    } else if (fileUrlText.match(/\.pdf$/i)) {
+                        filePreviewHTML = `<br><iframe src="${fileUrlText}" style="width: 100%; height: 300px; border: none; margin-top: 10px; border-radius: 8px;"></iframe>`;
+                    }
+                }
+        
+                // Add user message
+                const userBubble = document.createElement('div');
+                userBubble.className = 'chat-bubble user';
+                userBubble.innerHTML = `
+                    <div class="bubble-content">
+                        <strong>You:</strong> ${messageText}
+                        ${filePreviewHTML}
+                    </div>
+                `;
+                chatHistory.prepend(userBubble);
+        
+                // Add GPT loading
+                const loadingBubble = document.createElement('div');
+                loadingBubble.className = 'chat-bubble gpt';
+                loadingBubble.id = 'loading-bubble';
+                loadingBubble.innerHTML = `
+                    <div class="bubble-content">
+                        <strong>GPT:</strong> <span class="loading-dots">...</span>
+                    </div>
+                `;
+                chatHistory.prepend(loadingBubble);
+        
+                // Clear input
+                messageInput.value = "";
+                fileInput.value = "";
+        
+                try {
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    const formData = new FormData();
+                    formData.append('message', messageText);
+                    formData.append('file_url', fileUrlText);
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+        
+                    const response = await fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData,
+                    });
+        
+                    if (response.ok) {
+                        const htmlPage = await response.text();
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = htmlPage;
+        
+                        const newChatBubbles = tempDiv.querySelectorAll('#response-box .chat-bubble.gpt');
+                        if (newChatBubbles.length > 0) {
+                            const newMessage = newChatBubbles[0].innerHTML;
+                            const gptBubble = document.createElement('div');
+                            gptBubble.className = 'chat-bubble gpt';
+                            gptBubble.innerHTML = newMessage;
+        
+                            document.getElementById('loading-bubble')?.remove();
+                            chatHistory.prepend(gptBubble);
+                        } else {
+                            document.getElementById('loading-bubble')?.remove();
+                        }
+                    } else {
+                        console.error('Server error');
+                        document.getElementById('loading-bubble')?.remove();
+                    }
+                } catch (error) {
+                    console.error('Request failed:', error);
                     document.getElementById('loading-bubble')?.remove();
                 }
-            } else {
-                console.error('Server error');
-                document.getElementById('loading-bubble')?.remove();
-            }
-        } catch (error) {
-            console.error('Request failed:', error);
-            document.getElementById('loading-bubble')?.remove();
-        }
-    });
-});
-</script>
+            });
+        });
+        </script>
+
 
     
     
@@ -365,7 +376,45 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     </script>
     
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logo = document.querySelector('.logo-image');
+        
+            // Step 1: Rotate animation
+            logo.style.transition = 'transform 1s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
 
+            logo.style.transform = 'rotate(360deg)';
+            
+            setTimeout(() => {
+                logo.style.transform = 'rotate(720deg)';
+            }, 1000);  // after 1st rotation
+        
+            // Step 2: After rotations finish (2 seconds total), start image swapping
+            setTimeout(() => {
+                let images = [
+                    "{% static 'chat/images/logo2.png' %}",
+                    "{% static 'chat/images/logo3.png' %}",
+                    "{% static 'chat/images/logo2.png' %}",
+                    "{% static 'chat/images/logo.png' %}",
+                    "{% static 'chat/images/logo2.png' %}",
+                    "{% static 'chat/images/logo3.png' %}",
+                    "{% static 'chat/images/logo2.png' %}",
+                    "{% static 'chat/images/logo.png' %}"
+                ];
+                let index = 0;
+        
+                const swapInterval = setInterval(() => {
+                    if (index >= images.length) {
+                        clearInterval(swapInterval); // stop swapping after done
+                    } else {
+                        logo.src = images[index];
+                        index++;
+                    }
+                }, 200); // Change image every 800ms
+            }, 2200); // start after 2.2 seconds (rotation time + buffer)
+        });
+        </script>
+        
     
 </body>
 </html>

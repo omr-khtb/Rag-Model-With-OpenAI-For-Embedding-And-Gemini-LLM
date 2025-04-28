@@ -211,7 +211,9 @@ def chat_view(request):
 
             # Build readable prompt to send
             full_prompt = build_prompt(history, prompt)
-
+            print("\n🔵🔵🔵🔵 heree Sending this prompt to API:")
+            print(full_prompt)
+            print("\n🔵🔵🔵🔵 heree Sending this prompt to API:")
             response, new_chat_id = send_message(full_prompt, file_url, current_chat_id)
 
             if not current_chat_id and new_chat_id:
