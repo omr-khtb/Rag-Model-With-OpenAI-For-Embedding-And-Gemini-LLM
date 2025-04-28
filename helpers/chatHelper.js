@@ -137,8 +137,8 @@ async function fetchDocumentContent(url, chatId) {
     }
 
     const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 2250,
-      chunkOverlap: 350,
+      chunkSize: 1250,
+      chunkOverlap: 250,
     });
 
     const splitDocuments = await splitter.splitDocuments(documents);

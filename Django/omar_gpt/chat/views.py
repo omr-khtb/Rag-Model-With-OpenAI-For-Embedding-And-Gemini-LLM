@@ -24,7 +24,7 @@ TITLES_FILE = os.path.join(CHAT_LOG_DIR, 'chat_titles.json')
 # Ensure folders exist
 os.makedirs(CHAT_LOG_DIR, exist_ok=True)
 
-# Arabic helper
+# Arabic helpers
 def contains_arabic(text):
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
@@ -39,27 +39,35 @@ def fix_arabic(text):
     except Exception:
         return text
 
-# Utilities
+# Chat file utilities
 def get_chat_log_path(chat_id):
-    return os.path.join(CHAT_LOG_DIR, f"{chat_id}.txt")
+    return os.path.join(CHAT_LOG_DIR, f"{chat_id}.json")
 
 def save_to_chat_log(chat_id, prompt, response):
     file_path = get_chat_log_path(chat_id)
-    with open(file_path, "a", encoding="utf-8") as f:
-        f.write(f"User: {prompt}\n")
-        f.write(f"GPT: {response}\n")
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            chat_data = json.load(f)
+    else:
+        chat_data = []
+
+    chat_data.append({"role": "user", "content": prompt})
+    chat_data.append({"role": "gpt", "content": response})
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(chat_data, f, ensure_ascii=False, indent=2)
 
 def get_full_chat_history(chat_id):
     file_path = get_chat_log_path(chat_id)
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return ""
+            return json.load(f)
+    return []
 
 def list_chat_ids():
     if not os.path.exists(CHAT_LOG_DIR):
         return []
-    return [f.replace(".txt", "") for f in os.listdir(CHAT_LOG_DIR) if f.endswith(".txt")]
+    return [f.replace(".json", "") for f in os.listdir(CHAT_LOG_DIR) if f.endswith(".json")]
 
 def load_titles():
     if os.path.exists(TITLES_FILE):
@@ -78,7 +86,16 @@ def set_chat_title(chat_id, response_text):
         titles[chat_id] = first_words or "Untitled"
         save_titles(titles)
 
-# API call
+# Build readable prompt text
+def build_prompt(history, latest_user_message):
+    lines = []
+    for msg in history:
+        role = msg['role'].capitalize()  # 'User' or 'Gpt'
+        lines.append(f"{role}: {msg['content']}")
+    lines.append(f"User: {latest_user_message}")
+    return "\n".join(lines)
+
+# Sending message
 def send_message(message, file_url=None, current_chat_id=None):
     data = {
         "message": message,
@@ -86,19 +103,17 @@ def send_message(message, file_url=None, current_chat_id=None):
     }
 
     if file_url:
-        data["files"] = [file_url]
+        data["files"] = [file_url]  # MUST BE A LIST OF STRINGS
 
     if current_chat_id:
         data["chatID"] = current_chat_id
 
-    print("\n🔵 Sending Prompt to API:")
-    print(message)
-    print("🔵 End Prompt\n")
+    print("\n🔵 Sending this JSON payload to API:")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    print("🔵 End JSON\n")
 
     try:
         response = requests.post(API_URL, json=data, headers=headers)
-
-        # 🛠️ Force correct decoding to UTF-8
         response.encoding = 'utf-8'
 
         print("\n🔴 Full RAW API Response:")
@@ -140,8 +155,8 @@ def chat_view(request):
         file_path = get_chat_log_path(download_id)
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
-                response = HttpResponse(f.read(), content_type='text/plain; charset=utf-8')
-                response['Content-Disposition'] = 'attachment; filename="chat_{}.txt"'.format(download_id[:8])
+                response = HttpResponse(f.read(), content_type='application/json')
+                response['Content-Disposition'] = f'attachment; filename="{download_id}.json"'
                 return response
         else:
             return redirect(f"/?chat_id={download_id}")
@@ -177,11 +192,12 @@ def chat_view(request):
             prompt = form.cleaned_data["message"]
             file_url = form.cleaned_data.get("file_url")
 
-            history = ""
+            history = []
             if current_chat_id:
                 history = get_full_chat_history(current_chat_id)
 
-            full_prompt = f"{history}\nUser: {prompt}".strip()
+            # Build readable prompt to send
+            full_prompt = build_prompt(history, prompt)
 
             response, new_chat_id = send_message(full_prompt, file_url, current_chat_id)
 
@@ -194,13 +210,10 @@ def chat_view(request):
     else:
         form = ChatForm()
 
-    # Load chat history
+    # Load chat history for display
     chat_messages = []
     if current_chat_id:
-        raw_history = get_full_chat_history(current_chat_id)
-        chat_lines = raw_history.strip().split("\n")
-        # Reshape only for displaying
-        chat_messages = list(reversed(chat_lines))  # newest first
+        chat_messages = list(reversed(get_full_chat_history(current_chat_id)))
 
     all_chat_ids = list_chat_ids()
     all_chat_ids.sort(reverse=True)
