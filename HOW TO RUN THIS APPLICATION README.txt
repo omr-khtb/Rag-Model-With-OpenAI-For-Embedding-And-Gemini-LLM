@@ -43,3 +43,14 @@ https://res.cloudinary.com/dd9ftuyoo/image/upload/z8yafgcdztgol51gukmi.pdf
 
 video:
 https://res.cloudinary.com/dd9ftuyoo/video/upload/videoplayback_lklttm.mp4
+
+
+
+
+Links to open
+https://console.groq.com/playground
+
+https://console.cloudinary.com/console
+https://aistudio.google.com/apikey
+https://supabase.com/dashboard/project/egoejiejezbuxxuwzzmc/editor/17960
+https://huggingface.co/blog/gemma3
